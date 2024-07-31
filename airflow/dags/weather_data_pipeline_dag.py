@@ -19,7 +19,7 @@ CSV_FILE_PATH = os.getcwd() + '/processed_weather_data.csv'
 
 
 @dag(
-    schedule='@once',
+    schedule='@daily',
     start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
     catchup=False,
     tags=["weather", "test"],
