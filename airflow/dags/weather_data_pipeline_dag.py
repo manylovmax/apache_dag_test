@@ -1,12 +1,7 @@
-from __future__ import annotations
-
-
-
 import urllib.request
 import pendulum
 import json
 import os
-import csv
 
 import pandas as pd
 import pyarrow as pa
@@ -14,7 +9,8 @@ import pyarrow.parquet as pq
 
 from airflow.decorators import  dag, task
 
-JSON_WEATHER_DATA_FILE_PATH = os.getcwd() + '/tmp.json'
+JSON_WEATHER_DATA_FILE_PATH = '/tmp/weather_data.json'
+# JSON_WEATHER_DATA_FILE_PATH = os.getcwd() + '/weather_data.json'
 CSV_FILE_PATH = os.getcwd() + '/processed_weather_data.csv'
 
 
@@ -40,29 +36,29 @@ def weather_data_pipeline_dag():
         def kelvin_to_celsius(kelvin):
              return kelvin - 273.15
         
-        def append_data_to_csv(data):
+        def append_data_to_csv(df):
             exists = os.path.isfile(CSV_FILE_PATH)
+
             if exists:
-                with open(CSV_FILE_PATH, 'a') as csv_file:
-                    csv_writer = csv.writer(csv_file)
-                    csv_writer.writerow(data.values())
+                old_df = pd.read_csv(CSV_FILE_PATH)
+                new_df = pd.concat([old_df, df])
+                new_df.to_csv(CSV_FILE_PATH, index=False)
             else:
-                with open(CSV_FILE_PATH, 'w') as csv_file:
-                    csv_writer = csv.writer(csv_file)
-                    csv_writer.writerow(data.keys())
-                    csv_writer.writerow(data.values())
+                df.to_csv(CSV_FILE_PATH, index=False)
 
              
 
         with open(JSON_WEATHER_DATA_FILE_PATH, "r") as json_file:
-                json_data = json.load(json_file)
+            json_data = json.load(json_file)
         
-        json_data['main']['temp'] = kelvin_to_celsius(json_data['main']['temp'])
-        json_data['main']['feels_like'] = kelvin_to_celsius(json_data['main']['feels_like'])
-        json_data['main']['temp_min'] = kelvin_to_celsius(json_data['main']['temp_min'])
-        json_data['main']['temp_max'] = kelvin_to_celsius(json_data['main']['temp_max'])
+
+        df = pd.json_normalize(json_data)
+        df['main.temp'] = kelvin_to_celsius(json_data['main']['temp'])
+        df['main.feels_like'] = kelvin_to_celsius(json_data['main']['feels_like'])
+        df['main.temp_min'] = kelvin_to_celsius(json_data['main']['temp_min'])
+        df['main.temp_max'] = kelvin_to_celsius(json_data['main']['temp_max'])
         
-        append_data_to_csv(json_data)
+        append_data_to_csv(df)
 
 
 
